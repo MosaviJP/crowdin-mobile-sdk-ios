@@ -6,6 +6,16 @@
   </picture>
 </p>
 
+# Moss Change Log
+
+* Add UI Hot Reload interface without `RealtimeUpdate` subspec
+
+```
+// CrowdinSDKConfig+HotReload
+// Crowdin+HotReload
+// Refreshable
+```
+
 # Crowdin iOS SDK
 
 Crowdin iOS SDK delivers all new translations from Crowdin project to the application immediately. So there is no need to update this application via App Store to get the new version with the localization.
