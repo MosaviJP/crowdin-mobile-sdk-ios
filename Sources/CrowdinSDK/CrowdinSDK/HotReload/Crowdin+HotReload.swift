@@ -19,6 +19,8 @@ public extension CrowdinSDK {
         }
     }
     
+    // MARK: Sub
+    
     static func subscribe(control: Refreshable) {
         guard let localizationKey = control.key else { return }
         controls.add(control)
@@ -47,6 +49,29 @@ public extension CrowdinSDK {
         }
     }
     
+    static func unsubscribeAllControls(from view: View) {
+        view.subviews.forEach { (subview) in
+            if let refreshable = subview as? Refreshable {
+                self.unsubscribe(control: refreshable)
+            }
+            unsubscribeAllControls(from: subview)
+        }
+    }
+    
+    // MARK: Refresh
+    
+    /// Refresh view subview controls
+    /// - Parameter view: UIView
+    static func refreshSubviewControls(from view: View) {
+        view.subviews.forEach { subview in
+            if let refreshable = subview as? Refreshable {
+                refreshable.refresh()
+            }
+            refreshSubviewControls(from: subview)
+        }
+    }
+    
+    /// Refresh all controls from cache
     static func refreshAllControls() {
         controls.allObjects.forEach { (control) in
             if let refreshable = control as? Refreshable {
