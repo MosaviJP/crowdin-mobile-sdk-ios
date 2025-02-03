@@ -14,11 +14,12 @@ class CrowdinRemoteLocalizationStorage: RemoteLocalizationStorageProtocol {
     var hashString: String
     var name: String = "Crowdin"
     var manifestManager: ManifestManager
-    
+
     private var crowdinDownloader: CrowdinLocalizationDownloader
-    private var _localizations: [String]?
-    private let crowdinSupportedLanguages: CrowdinSupportedLanguages
-    
+    private var crowdinSupportedLanguages: CrowdinSupportedLanguages {
+        manifestManager.crowdinSupportedLanguages
+    }
+
     init(localization: String, config: CrowdinProviderConfig) {
         self.localization = localization
         self.hashString = config.hashString
@@ -26,16 +27,15 @@ class CrowdinRemoteLocalizationStorage: RemoteLocalizationStorageProtocol {
         self.manifestManager = ManifestManager.manifest(for: config.hashString, sourceLanguage: config.sourceLanguage, organizationName: config.organizationName)
         self.crowdinDownloader = CrowdinLocalizationDownloader(manifestManager: manifestManager)
         self.localizations = self.manifestManager.iOSLanguages
-        self.crowdinSupportedLanguages = CrowdinSupportedLanguages(organizationName: config.organizationName)
     }
-    
+
     func prepare(with completion: @escaping () -> Void) {
         self.downloadCrowdinSupportedLanguages { [weak self] in
             guard let self = self else { return }
             self.downloadManifest(completion: completion)
         }
     }
-    
+
     func downloadCrowdinSupportedLanguages(completion: @escaping () -> Void) {
         if !crowdinSupportedLanguages.loaded {
             crowdinSupportedLanguages.downloadSupportedLanguages(completion: {
@@ -48,7 +48,7 @@ class CrowdinRemoteLocalizationStorage: RemoteLocalizationStorageProtocol {
             completion()
         }
     }
-     
+
     func downloadManifest(completion: @escaping () -> Void) {
         self.manifestManager.download(completion: { [weak self] in
             guard let self = self else { return }
@@ -57,7 +57,7 @@ class CrowdinRemoteLocalizationStorage: RemoteLocalizationStorageProtocol {
             completion()
         })
     }
-    
+
     required init(localization: String, sourceLanguage: String, organizationName: String?) {
         self.localization = localization
         guard let hashString = Bundle.main.crowdinDistributionHash else {
@@ -67,9 +67,8 @@ class CrowdinRemoteLocalizationStorage: RemoteLocalizationStorageProtocol {
         self.manifestManager = ManifestManager.manifest(for: hashString, sourceLanguage: sourceLanguage, organizationName: organizationName)
         self.crowdinDownloader = CrowdinLocalizationDownloader(manifestManager: self.manifestManager)
         self.localizations = []
-        self.crowdinSupportedLanguages = CrowdinSupportedLanguages(organizationName: organizationName)
     }
-    
+
     func fetchData(completion: @escaping LocalizationStorageCompletion, errorHandler: LocalizationStorageError?) {
         guard self.localizations.contains(self.localization) else {
             let error = NSError(domain: "Remote storage doesn't contains selected localization.", code: defaultCrowdinErrorCode, userInfo: nil)
@@ -81,16 +80,15 @@ class CrowdinRemoteLocalizationStorage: RemoteLocalizationStorageProtocol {
         self.crowdinDownloader.download(with: self.hashString, for: localization) { [weak self] strings, plurals, errors in
             guard let self = self else { return }
             completion(self.localizations, localization, strings, plurals)
-            DispatchQueue.main.async {
-                LocalizationUpdateObserver.shared.notifyDownload()
-                
-                if let errors = errors {
-                    LocalizationUpdateObserver.shared.notifyError(with: errors)
-                }
+
+            LocalizationUpdateObserver.shared.notifyDownload()
+
+            if let errors = errors {
+                LocalizationUpdateObserver.shared.notifyError(with: errors)
             }
         }
     }
-    
+
     /// Remove add stored E-Tag headers for every file and cached manifest file
     func deintegrate() {
         FileEtagStorage.clear()

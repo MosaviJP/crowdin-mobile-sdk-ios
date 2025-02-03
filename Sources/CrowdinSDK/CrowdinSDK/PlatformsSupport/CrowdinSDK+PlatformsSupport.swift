@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  
+//
 //
 //  Created by Serhii Londar on 18.06.2022.
 //
@@ -11,31 +11,37 @@ import Foundation
 
 import AppKit
 
-typealias Label = NSTextField
+public typealias CWView = NSView
+public typealias CWImage = NSImage
+public typealias CWScreen = NSScreen
 
-public typealias View = NSView
-typealias ViewController = NSViewController
-public typealias Image = NSImage
-typealias Control = NSControl
-typealias Window = NSWindow
-typealias Application = NSApplication
+typealias CWLabel = NSTextField
+typealias CWViewController = NSViewController
+typealias CWControl = NSControl
+typealias CWWindow = NSWindow
+typealias CWApplication = NSApplication
 
-extension NSView {
+extension CWView {
     var alpha: CGFloat { alphaValue }
-    
-    var screenshot: Image? { Image(data: dataWithPDF(inside: bounds)) }
+
+    var screenshot: CWImage? { CWImage(data: dataWithPDF(inside: bounds)) }
 }
 
-extension Image {
+extension CWImage {
     func pngData() -> Data? {
         guard let cgImage = cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
         let bitmap = NSBitmapImageRep(cgImage: cgImage)
         bitmap.size = size
         return bitmap.representation(using: .png, properties: [:])
     }
+
+    var scale: Double {
+        guard let cgImage = cgImage(forProposedRect: nil, context: nil, hints: nil) else { return 1 }
+        return Double(cgImage.width) / Double(size.width)
+    }
 }
 
-extension Label {
+extension CWLabel {
     var text: String {
         get {
             stringValue
@@ -45,29 +51,45 @@ extension Label {
         }
     }
 }
+
+extension CWScreen {
+    public static func scale() -> CGFloat {
+        return NSScreen.main?.backingScaleFactor ?? 1
+    }
+}
+
 #elseif os(iOS) || os(tvOS)
 
 import UIKit
 
-typealias Label = UILabel
-public typealias View = UIView
-typealias ViewController = UIViewController
-public typealias Image = UIImage
-typealias Window = UIWindow
-typealias Application = UIApplication
+public typealias CWView = UIView
+public typealias CWImage = UIImage
+public typealias CWScreen = UIScreen
+
+typealias CWLabel = UILabel
+typealias CWViewController = UIViewController
+typealias CWWindow = UIWindow
+typealias CWApplication = UIApplication
+
+extension CWScreen {
+    public static func scale() -> CGFloat {
+        return UIScreen.main.scale
+    }
+}
 
 #elseif os(watchOS)
 
 import WatchKit
 
-typealias Label = WKInterfaceLabel
-public typealias View = WKInterfaceObject
-typealias ViewController = WKInterfaceController
-public typealias Image = WKImage
-typealias Window = WKInterfaceController
-//typealias Application = WKApplication
+public typealias CWView = WKInterfaceObject
+public typealias CWImage = WKImage
+public typealias CWScreen = WKInterfaceDevice
 
-extension Label {
+typealias CWLabel = WKInterfaceLabel
+typealias CWViewController = WKInterfaceController
+typealias CWWindow = WKInterfaceController
+
+extension CWLabel {
     var text: String? {
         set {
             setText(newValue)
@@ -75,6 +97,12 @@ extension Label {
         get {
             nil
         }
+    }
+}
+
+extension CWScreen {
+    public static func scale() -> CGFloat {
+        return WKInterfaceDevice.current().screenScale
     }
 }
 
