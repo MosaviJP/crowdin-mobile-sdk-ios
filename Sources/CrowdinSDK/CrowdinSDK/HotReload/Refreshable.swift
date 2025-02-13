@@ -14,7 +14,7 @@ public protocol Refreshable: NSObjectProtocol {
     func refresh()
 }
 
-extension Label: Refreshable {
+extension CWLabel: Refreshable {
     public func refresh(text: String) {
         if let values = self.localizationValues as? [CVarArg] {
             let newText = String(format: text, arguments: values)

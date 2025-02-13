@@ -40,7 +40,7 @@ public extension CrowdinSDK {
         controls.removeAllObjects()
     }
     
-    static func subscribeAllControls(from view: View) {
+    static func subscribeAllControls(from view: CWView) {
         view.subviews.forEach { (subview) in
             if let refreshable = subview as? Refreshable {
                 self.subscribe(control: refreshable)
@@ -49,7 +49,7 @@ public extension CrowdinSDK {
         }
     }
     
-    static func unsubscribeAllControls(from view: View) {
+    static func unsubscribeAllControls(from view: CWView) {
         view.subviews.forEach { (subview) in
             if let refreshable = subview as? Refreshable {
                 self.unsubscribe(control: refreshable)
@@ -62,7 +62,7 @@ public extension CrowdinSDK {
     
     /// Refresh view subview controls
     /// - Parameter view: UIView
-    static func refreshSubviewControls(from view: View) {
+    static func refreshSubviewControls(from view: CWView) {
         view.subviews.forEach { subview in
             if let refreshable = subview as? Refreshable {
                 refreshable.refresh()
