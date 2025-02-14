@@ -153,10 +153,13 @@ class LocalizationProvider: NSObject, LocalizationProviderProtocol {
         pluralsBundle = DictionaryBundle(path: pluralsFolder.path + String.pathDelimiter + localizationFolderName, fileName: Strings.LocalizableStringsdict.rawValue, dictionary: self.plurals)
     }
 
+    private let lock = NSLock()
     // Setup strings
     private
     func setupStrings() {
+        lock.lock()
         self.stringsDataSource = StringsLocalizationDataSource(strings: strings)
+        lock.unlock()
     }
 
     private func saveLocalization(strings: [String: String]?, plurals: [AnyHashable: Any]?, for localization: String) {
@@ -177,6 +180,8 @@ class LocalizationProvider: NSObject, LocalizationProviderProtocol {
     }
 
     func key(for string: String) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
         var key = stringsDataSource.findKey(for: string)
         guard key == nil else { return key }
         key = pluralsDataSource.findKey(for: string)
@@ -184,6 +189,8 @@ class LocalizationProvider: NSObject, LocalizationProviderProtocol {
     }
 
     func values(for string: String, with format: String) -> [Any]? {
+        lock.lock()
+        defer { lock.unlock() }
         var values = self.stringsDataSource.findValues(for: string, with: format)
         if values == nil {
             values = self.pluralsDataSource.findValues(for: string, with: format)
