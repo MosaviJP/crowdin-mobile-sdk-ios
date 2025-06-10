@@ -10,6 +10,7 @@ import XCTest
 
 class CrowdinRemoteLocalizationStorageTests: XCTestCase {
     let crowdinProviderConfig = CrowdinProviderConfig(hashString: "5290b1cfa1eb44bf2581e78106i", sourceLanguage: "en")
+    // swiftlint:disable implicitly_unwrapped_optional
     var remoteLocalizationStorage: CrowdinRemoteLocalizationStorage!
     
     override func setUp() {
@@ -32,7 +33,7 @@ class CrowdinRemoteLocalizationStorageTests: XCTestCase {
         let preparationExpectation = XCTestExpectation(description: "Provider preperation")
         
         remoteLocalizationStorage = CrowdinRemoteLocalizationStorage(localization: "en", config: crowdinProviderConfig)
-        
+        remoteLocalizationStorage.manifestManager.clear()
         remoteLocalizationStorage.prepare {
             preparationExpectation.fulfill()
         }
@@ -90,12 +91,15 @@ class CrowdinRemoteLocalizationStorageTests: XCTestCase {
         
         remoteLocalizationStorage.localization = "de"
         remoteLocalizationStorage.fetchData { localizations, localization, strings, plurals in
+            print("localizations - \(localizations)")
             XCTAssertTrue(localization == "de")
             XCTAssertTrue(localizations?.count == 3)
             
+            print("localizations - \(strings)")
             XCTAssertNotNil(strings)
             XCTAssertTrue(strings?.count == 5)
             
+            print("localizations - \(plurals)")
             XCTAssertNotNil(plurals)
             XCTAssertTrue(plurals?.count == 2)
             
