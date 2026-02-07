@@ -25,8 +25,12 @@ class LocalLocalizationStorage: LocalLocalizationStorageProtocol {
     /// - Parameter localization: Current localization.
     init(localization: String) {
         self.localization = localization
-        // swiftlint:disable force_try
-        self.localizationFolder = try! CrowdinFolder.shared.createFolder(with: Strings.crowdin.rawValue)
+        do {
+            self.localizationFolder = try CrowdinFolder.shared.createFolder(with: Strings.crowdin.rawValue)
+        } catch {
+            CrowdinLogsCollector.shared.add(log: CrowdinLog(type: .error, message: "Failed to create Crowdin localization folder '\(Strings.crowdin.rawValue)': \(error.localizedDescription)"))
+            self.localizationFolder = CrowdinFolder.shared
+        }
     }
 
     /// Folder used for storing all localization files.
@@ -43,7 +47,7 @@ class LocalLocalizationStorage: LocalLocalizationStorageProtocol {
 
     /// List of all available localizations.
     var localizations: [String] {
-        return self.localizationFolder.files.filter({ return $0.type == FileType.plist.rawValue }).map({ $0.name })
+        return self.localizationFolder.files.filter({ $0.type == FileType.plist.rawValue }).compactMap({ $0.name.split(separator: ".").first }).map({ String($0) })
     }
 
     private var _strings: Atomic<[String: String]> = Atomic([:])
@@ -106,6 +110,8 @@ class LocalLocalizationStorage: LocalLocalizationStorageProtocol {
     }
 
     func deintegrate() {
-        try? self.localizationFolder.remove()
+        if localizationFolder.path != CrowdinFolder.shared.path {
+            try? self.localizationFolder.remove()
+        }
     }
 }
