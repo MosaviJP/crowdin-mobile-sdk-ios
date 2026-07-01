@@ -15,7 +15,7 @@ protocol LocalizationProviderProtocol {
     var localStorage: LocalLocalizationStorageProtocol { get }
     var remoteStorage: RemoteLocalizationStorageProtocol { get }
 
-    var localization: String { get set }
+    var localization: String { get }
     var localizations: [String] { get }
 
     func refreshLocalization()
@@ -24,6 +24,7 @@ protocol LocalizationProviderProtocol {
     func prepare(with completion: @escaping () -> Void)
 
     func deintegrate()
+    func setLocalization(_ localization: String, completion: @escaping ((Error?) -> Void))
     func localizedString(for key: String) -> String?
     func key(for string: String) -> String?
     func values(for string: String, with format: String) -> [Any]?
@@ -36,11 +37,7 @@ class LocalizationProvider: NSObject, LocalizationProviderProtocol {
         case localizableStringsdict = "Localizable.stringsdict"
     }
     // Public
-    var localization: String {
-        didSet {
-            self.refreshLocalization()
-        }
-    }
+    var localization: String
     var localizations: [String] { return remoteStorage.localizations }
 
     var localStorage: LocalLocalizationStorageProtocol
@@ -99,6 +96,11 @@ class LocalizationProvider: NSObject, LocalizationProviderProtocol {
                 completion()
             }
         }
+    }
+
+    func setLocalization(_ localization: String, completion: @escaping ((Error?) -> Void)) {
+        self.localization = localization
+        self.refreshLocalization(completion: completion)
     }
 
     // Private method
@@ -171,15 +173,28 @@ class LocalizationProvider: NSObject, LocalizationProviderProtocol {
 
     // Localization methods
     func localizedString(for key: String) -> String? {
-        var string = self.strings[key]
-        if string == nil {
-			string = self.pluralsBundle?.bundle?.swizzled_LocalizedString(forKey: key, value: nil, table: nil)
+        // Check plurals first - if a key has plurals defined, those take precedence over simple strings
+        // This fixes the issue where keys exist in both .strings and .stringsdict files
+        var string: String?
+        if let bundle = self.pluralsBundle?.bundle {
+            // Use swizzled_LocalizedString only when Bundle is swizzled (methods are exchanged),
+            // otherwise call localizedString directly to avoid infinite recursion.
+            if Bundle.isSwizzled {
+                string = bundle.swizzled_LocalizedString(forKey: key, value: nil, table: nil)
+            } else {
+                string = bundle.localizedString(forKey: key, value: nil, table: nil)
+            }
             // Plurals localization works as default bundle localization.
             // In case localized string for key is missing the key string will be returned.
             // To prevent issues with localization where key equals value(for example for english language) we need to set nil here.
             if string == key {
                 string = nil
             }
+        }
+        
+        // If no plural exists, fall back to simple strings
+        if string == nil {
+            string = self.strings[key]
         }
         return string
     }

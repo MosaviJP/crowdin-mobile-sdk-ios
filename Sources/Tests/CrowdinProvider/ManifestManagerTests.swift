@@ -19,23 +19,20 @@ class ManifestManagerTests: XCTestCase {
         let manifestManager = ManifestManager.manifest(for: "test_hash", sourceLanguage: "en", organizationName: nil, minimumManifestUpdateInterval: 60)
         
         // 1. Setup Supported Languages (Mocking what Crowdin returns)
-        let esData = LanguagesResponseData(
-            id: "es-ES", name: "Spanish", editorCode: "es", twoLettersCode: "es", threeLettersCode: "spa",
-            locale: "es-ES", androidCode: "es-rES", osxCode: "es.lproj", osxLocale: "es",
-            pluralCategoryNames: [], pluralRules: "", pluralExamples: [], textDirection: .ltr, dialectOf: nil
-        )
-        let svData = LanguagesResponseData(
-            id: "sv-SE", name: "Swedish", editorCode: "sv", twoLettersCode: "sv", threeLettersCode: "swe",
-            locale: "sv-SE", androidCode: "sv-rSE", osxCode: "sv.lproj", osxLocale: "sv",
-            pluralCategoryNames: [], pluralRules: "", pluralExamples: [], textDirection: .ltr, dialectOf: nil
-        )
+        struct MockLanguage: CrowdinLanguage {
+            var id: String
+            var name: String
+            var twoLettersCode: String
+            var threeLettersCode: String
+            var locale: String
+            var osxCode: String
+            var osxLocale: String
+        }
         
-        let languagesResponse = LanguagesResponse(data: [
-            LanguagesResponseDatum(data: esData),
-            LanguagesResponseDatum(data: svData)
-        ], pagination: LanguagesResponsePagination(offset: 0, limit: 2))
-        
-        manifestManager.crowdinSupportedLanguages.supportedLanguages = languagesResponse
+        let esLang = MockLanguage(id: "es-ES", name: "Spanish", twoLettersCode: "es", threeLettersCode: "spa", locale: "es-ES", osxCode: "es.lproj", osxLocale: "es")
+        let svLang = MockLanguage(id: "sv-SE", name: "Swedish", twoLettersCode: "sv", threeLettersCode: "swe", locale: "sv-SE", osxCode: "sv.lproj", osxLocale: "sv")
+
+        manifestManager.crowdinSupportedLanguages.supportedLanguages = [esLang, svLang]
         
         // 2. Setup Manifest (Mocking user's manifest)
         let content: [String: [String]] = [
@@ -68,6 +65,116 @@ class ManifestManagerTests: XCTestCase {
         XCTAssertEqual(svFiles, ["/content/sv.strings"], "Should find Swedish files")
         
         // Cleanup
+        manifestManager.clear()
+    }
+
+    func testContentFilesForCustomLanguage() {
+        let manifestManager = ManifestManager.manifest(for: "test_hash_custom", sourceLanguage: "en", organizationName: nil, minimumManifestUpdateInterval: 60)
+
+        let customLanguage = ManifestResponse.ManifestResponseCustomLangugage(
+            locale: "tlh-PQ",
+            twoLettersCode: "tlh",
+            threeLettersCode: "tlh",
+            localeWithUnderscore: "tlh_PQ",
+            androidCode: "tlh-rPQ",
+            osxCode: "tlh.lproj",
+            osxLocale: "tlh"
+        )
+
+        let manifestResponse = ManifestResponse(
+            files: ["/Localizable.strings"],
+            timestamp: 1234567890,
+            languages: ["tlh-PQ"],
+            responseCustomLanguages: ["tlh-PQ": customLanguage],
+            content: ["tlh-PQ": ["/content/tlh.strings"]],
+            mapping: []
+        )
+
+        manifestManager.manifest = manifestResponse
+
+        let customFiles = manifestManager.contentFiles(for: "tlh")
+        XCTAssertEqual(customFiles, ["/content/tlh.strings"], "Should find custom language files")
+
+        manifestManager.clear()
+    }
+
+    func testXcstringsParsingKeyForStandardLanguage() {
+        let manifestManager = ManifestManager.manifest(for: "test_hash_xcstrings_standard", sourceLanguage: "en", organizationName: nil, minimumManifestUpdateInterval: 60)
+
+        struct MockLanguage: CrowdinLanguage {
+            var id: String
+            var name: String
+            var twoLettersCode: String
+            var threeLettersCode: String
+            var locale: String
+            var osxCode: String
+            var osxLocale: String
+        }
+
+        let deLang = MockLanguage(id: "de", name: "German", twoLettersCode: "de", threeLettersCode: "deu", locale: "de-DE", osxCode: "de.lproj", osxLocale: "de")
+        let ptBRLang = MockLanguage(id: "pt-BR", name: "Portuguese, Brazilian", twoLettersCode: "pt", threeLettersCode: "por", locale: "pt-BR", osxCode: "pt_BR.lproj", osxLocale: "pt-BR")
+
+        manifestManager.crowdinSupportedLanguages.supportedLanguages = [deLang, ptBRLang]
+        manifestManager.manifest = ManifestResponse(
+            files: [],
+            timestamp: 0,
+            languages: ["de", "pt-BR"],
+            responseCustomLanguages: nil,
+            content: [:],
+            mapping: []
+        )
+
+        // Standard language: returns iOSLanguageCode normalized to BCP 47
+        XCTAssertEqual(manifestManager.xcstringsParsingKey(for: "de"), "de")
+        // Standard language passed with underscore: returns iOSLanguageCode ("pt-BR"), not raw input "pt_BR"
+        XCTAssertEqual(manifestManager.xcstringsParsingKey(for: "pt_BR"), "pt-BR")
+        // Unknown language with underscore: normalizes underscore to hyphen
+        XCTAssertEqual(manifestManager.xcstringsParsingKey(for: "zh_HK"), "zh-HK")
+        // Unknown language already in BCP 47 format: returned as-is
+        XCTAssertEqual(manifestManager.xcstringsParsingKey(for: "zh-HK"), "zh-HK")
+
+        manifestManager.clear()
+    }
+
+    func testXcstringsParsingKeyForCustomLanguage() {
+        let manifestManager = ManifestManager.manifest(for: "test_hash_xcstrings_custom", sourceLanguage: "en", organizationName: nil, minimumManifestUpdateInterval: 60)
+
+        // Custom Tongan: osxLocale="to", locale="to-To" → redundant region stripped → "to"
+        let toCustomLanguage = ManifestResponse.ManifestResponseCustomLangugage(
+            locale: "to-To",
+            twoLettersCode: "to",
+            threeLettersCode: "ton",
+            localeWithUnderscore: "to_To",
+            androidCode: "to-rTo",
+            osxCode: "to.lproj",
+            osxLocale: "to"
+        )
+
+        // Custom Serbian (Kosovo): osxLocale="SRXK", locale="sr_XK" → normalized to "sr-XK"
+        let srXKCustomLanguage = ManifestResponse.ManifestResponseCustomLangugage(
+            locale: "sr_XK",
+            twoLettersCode: "sr",
+            threeLettersCode: "srp",
+            localeWithUnderscore: "sr_XK",
+            androidCode: "sr-rXK",
+            osxCode: "SRXK.lproj",
+            osxLocale: "SRXK"
+        )
+
+        manifestManager.manifest = ManifestResponse(
+            files: [],
+            timestamp: 0,
+            languages: ["to-To", "sr-XK"],
+            responseCustomLanguages: ["to-To": toCustomLanguage, "sr-XK": srXKCustomLanguage],
+            content: [:],
+            mapping: []
+        )
+
+        // Custom Tongan: iOSLanguageCode = osxLocale = "to" → xcstrings key = "to"
+        XCTAssertEqual(manifestManager.xcstringsParsingKey(for: "to"), "to")
+        // Custom Serbian Kosovo: iOSLanguageCode = osxLocale = "SRXK" → xcstrings key = "sr-XK"
+        XCTAssertEqual(manifestManager.xcstringsParsingKey(for: "SRXK"), "sr-XK")
+
         manifestManager.clear()
     }
 }
