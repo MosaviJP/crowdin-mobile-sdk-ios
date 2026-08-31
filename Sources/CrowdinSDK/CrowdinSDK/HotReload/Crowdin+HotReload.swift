@@ -6,7 +6,11 @@
 //
 
 import Foundation
+#if SWIFT_PACKAGE
+import UIKit
+#else
 import CrowdinSDK
+#endif
 
 var controls = NSHashTable<AnyObject>.weakObjects()
 public extension CrowdinSDK {
