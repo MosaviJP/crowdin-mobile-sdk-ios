@@ -12,29 +12,26 @@ let package = Package(
         .tvOS(.v12)
     ],
     products: [
-        .library(name: "CrowdinSDK", targets: ["CrowdinSDK"]),
-        .library(name: "CrowdinXCTestScreenshots", targets: ["CrowdinXCTestScreenshots"])
+        .library(name: "CrowdinSDK", targets: ["CrowdinSDK"])
     ],
     dependencies: [
-        .package(url: "https://github.com/serhii-londar/BaseAPI.git", .upToNextMajor(from: "0.2.1")),
-        .package(url: "https://github.com/daltoniam/Starscream.git", .upToNextMajor(from: "4.0.4")),
+        .package(url: "https://github.com/serhii-londar/BaseAPI.git", .upToNextMinor(from: "0.2.2"))
     ],
     targets: [
         .target(
-            name: "CrowdinXCTestScreenshots",
-            dependencies: ["CrowdinSDK"],
-            path: "Sources/CrowdinSDK/Features/XCTestScreenshotFeature",
-            swiftSettings: [
-                .define("CrowdinSDKSPM")
-            ]
-        ),
-        .target(
             name: "CrowdinSDK",
-            dependencies: ["BaseAPI", "Starscream"],
+            dependencies: ["BaseAPI"],
             path: "Sources/CrowdinSDK",
-            exclude: ["Features/XCTestScreenshotFeature"],
-            swiftSettings: [
-                .define("CrowdinSDKSPM")
+            exclude: [
+                "Features",
+                "Resources",
+                "Settings"
+            ],
+            sources: [
+                "CrowdinSDK",
+                "CrowdinFileSystem",
+                "CrowdinAPI",
+                "Providers/Crowdin"
             ]
         )
     ]

@@ -6,7 +6,17 @@
 //
 
 import Foundation
+#if SWIFT_PACKAGE
+#if os(iOS) || os(tvOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#elseif os(watchOS)
+import WatchKit
+#endif
+#else
 import CrowdinSDK
+#endif
 
 var controls = NSHashTable<AnyObject>.weakObjects()
 public extension CrowdinSDK {
@@ -31,9 +41,15 @@ public extension CrowdinSDK {
     }
     
     static func subscribeAllVisibleConrols() {
+#if os(iOS) || os(tvOS)
         UIApplication.shared.windows.forEach({
             subscribeAllControls(from: $0)
         })
+#elseif os(macOS)
+        NSApplication.shared.windows.compactMap(\.contentView).forEach({
+            subscribeAllControls(from: $0)
+        })
+#endif
     }
     
     static func unsubscribeAllVisibleConrols() {
@@ -41,21 +57,25 @@ public extension CrowdinSDK {
     }
     
     static func subscribeAllControls(from view: CWView) {
+#if !os(watchOS)
         view.subviews.forEach { (subview) in
             if let refreshable = subview as? Refreshable {
                 self.subscribe(control: refreshable)
             }
             subscribeAllControls(from: subview)
         }
+#endif
     }
     
     static func unsubscribeAllControls(from view: CWView) {
+#if !os(watchOS)
         view.subviews.forEach { (subview) in
             if let refreshable = subview as? Refreshable {
                 self.unsubscribe(control: refreshable)
             }
             unsubscribeAllControls(from: subview)
         }
+#endif
     }
     
     // MARK: Refresh
@@ -63,12 +83,14 @@ public extension CrowdinSDK {
     /// Refresh view subview controls
     /// - Parameter view: UIView
     static func refreshSubviewControls(from view: CWView) {
+#if !os(watchOS)
         view.subviews.forEach { subview in
             if let refreshable = subview as? Refreshable {
                 refreshable.refresh()
             }
             refreshSubviewControls(from: subview)
         }
+#endif
     }
     
     /// Refresh all controls from cache

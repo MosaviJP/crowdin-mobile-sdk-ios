@@ -10,16 +10,18 @@ import Foundation
 import UIKit
 #elseif os(macOS)
 import AppKit
+#elseif os(watchOS)
+import WatchKit
 #endif
 
-protocol Refreshable: NSObjectProtocol {
+public protocol Refreshable: NSObjectProtocol {
     var key: String? { get }
     func refresh(text: String)
     func refresh()
 }
 
 extension CWLabel: Refreshable {
-    func refresh(text: String) {
+    public func refresh(text: String) {
         if let values = self.localizationValues as? [CVarArg] {
             let newText = String(format: text, arguments: values)
             self.original_setText(newText)
@@ -27,12 +29,12 @@ extension CWLabel: Refreshable {
             self.original_setText(text)
         }
     }
-
-    var key: String? {
+    
+    public var key: String? {
         return self.localizationKey
     }
-
-    func refresh() {
+    
+    public func refresh() {
         guard let key = self.localizationKey else { return }
         if let values = self.localizationValues as? [CVarArg] {
             self.text = key.cw_localized(with: values)
@@ -44,7 +46,7 @@ extension CWLabel: Refreshable {
 
 #if os(iOS) || os(tvOS)
 extension UIButton: Refreshable {
-    func refresh(text: String) {
+    public func refresh(text: String) {
         if let values = self.localizationValues?[state.rawValue] as? [CVarArg] {
             let newText = String(format: text, arguments: values)
             self.cw_setTitle(newText, for: self.state)
@@ -52,12 +54,12 @@ extension UIButton: Refreshable {
             self.cw_setTitle(text, for: self.state)
         }
     }
-
-    var key: String? {
+    
+    public var key: String? {
         return self.localizationKeys?[state.rawValue]
     }
-
-    func refresh() {
+    
+    public func refresh() {
         UIControl.State.all.forEach { (state) in
             guard let key = self.localizationKeys?[state.rawValue] else { return }
             if let values = self.localizationValues?[state.rawValue] as? [CVarArg] {
@@ -65,30 +67,6 @@ extension UIButton: Refreshable {
             } else {
                 self.cw_setTitle(key.cw_localized, for: state)
             }
-        }
-    }
-}
-#elseif os(macOS)
-extension NSButton: Refreshable {
-    func refresh(text: String) {
-        if let values = self.localizationValues as? [CVarArg] {
-            let newText = String(format: text, arguments: values)
-            self.cw_setTitle(newText)
-        } else {
-            self.cw_setTitle(text)
-        }
-    }
-
-    var key: String? {
-        return self.localizationKey
-    }
-
-    func refresh() {
-        guard let key = self.localizationKey else { return }
-        if let values = self.localizationValues as? [CVarArg] {
-            self.cw_setTitle(key.cw_localized(with: values))
-        } else {
-            self.cw_setTitle(key.cw_localized)
         }
     }
 }
