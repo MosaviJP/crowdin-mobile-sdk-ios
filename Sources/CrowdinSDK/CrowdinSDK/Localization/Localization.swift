@@ -43,6 +43,27 @@ class Localization {
     }
 
     static func setCurrentLocalization(_ localization: String?, completion: @escaping ((Error?) -> Void)) {
+        guard CrowdinSDK.isHotReloadEnabled else {
+            applyLocalization(localization, completion: completion)
+            return
+        }
+        // Collect and refresh controls on the main thread. Callers must prevent overlapping language changes.
+        let change = {
+            let target = localization ?? autoDetectedLocalization
+            let refresh: () -> Void = current != nil && current.provider.localization != target
+                ? CrowdinSDK.prepareLanguageRefresh() : {}
+            applyLocalization(localization) { error in
+                let finish = {
+                    refresh()
+                    completion(error)
+                }
+                if Thread.isMainThread { finish() } else { DispatchQueue.main.async(execute: finish) }
+            }
+        }
+        if Thread.isMainThread { change() } else { DispatchQueue.main.async(execute: change) }
+    }
+
+    private static func applyLocalization(_ localization: String?, completion: @escaping ((Error?) -> Void)) {
         self.customLocalization = localization
         let targetLocalization = localization ?? autoDetectedLocalization
         Localization.current?.extractor.localization = targetLocalization

@@ -8,6 +8,9 @@
 //
 
 import XCTest
+#if os(iOS) || os(tvOS)
+import UIKit
+#endif
 @testable import CrowdinSDK
 
 // MARK: - Minimal test doubles
@@ -65,7 +68,7 @@ private class StubProvider: LocalizationProviderProtocol {
     func deintegrate() {}
 
     func localizedString(for key: String) -> String? { nil }
-    func key(for string: String) -> String? { nil }
+    func key(for string: String) -> String? { localStorage.strings.first(where: { $0.value == string })?.key }
     func values(for string: String, with format: String) -> [Any]? { nil }
     func set(string: String, for key: String) {}
 }
@@ -156,3 +159,54 @@ class CrowdinLocaleTests: XCTestCase {
         XCTAssertEqual(String.crowdinLocale.identifier, "de")
     }
 }
+
+#if os(iOS) || os(tvOS)
+extension CrowdinLocaleTests {
+    func testHotReloadToggleDoesNotChangeControlSwizzling() {
+        let oldEnabled = CrowdinSDK.isHotReloadEnabled
+        let labelSwizzled = UILabel.isSwizzled
+        let buttonSwizzled = UIButton.isSwizzled
+        defer { CrowdinSDK.enableHotReload(enable: oldEnabled) }
+        let config = CrowdinSDKConfig.config().with(hotReloadEnabled: true)
+        XCTAssertTrue(config.hotReloadEnabled)
+        XCTAssertEqual(UILabel.isSwizzled, labelSwizzled)
+        XCTAssertEqual(UIButton.isSwizzled, buttonSwizzled)
+        CrowdinSDK.enableHotReload(enable: false)
+        XCTAssertFalse(config.hotReloadEnabled)
+        XCTAssertEqual(UILabel.isSwizzled, labelSwizzled)
+        XCTAssertEqual(UIButton.isSwizzled, buttonSwizzled)
+    }
+
+    func testLanguageRefreshWithoutControlSwizzling() {
+        XCTAssertTrue(Thread.isMainThread)
+        XCTAssertFalse(UILabel.isSwizzled)
+        XCTAssertFalse(UIButton.isSwizzled)
+        let local = StubLocalStorage(localization: "en")
+        // Use keys absent from the test bundle to verify that refresh resolves text through the captured keys.
+        local.strings = ["hot_reload_new_label": "Old label", "hot_reload_new_button": "Old button"]
+        let provider = StubProvider(localization: "en", localStorage: local,
+                                    remoteStorage: StubRemoteStorage(localization: "en"))
+        Localization.current = Localization(provider: provider)
+        let container = UIView()
+        let label = UILabel()
+        label.text = "Old label"
+        let button = UIButton(type: .custom)
+        button.setTitle("Old button", for: .normal)
+        let reusedLabel = UILabel()
+        reusedLabel.text = "Old label"
+        container.addSubview(label)
+        container.addSubview(button)
+        container.addSubview(reusedLabel)
+
+        let refresh = CrowdinSDK.prepareLanguageRefresh(from: [container])
+        XCTAssertEqual(label.text, "Old label")
+        reusedLabel.text = "Reused cell"
+        local.strings = [:]
+        refresh()
+
+        XCTAssertEqual(label.text, "hot_reload_new_label")
+        XCTAssertEqual(button.title(for: .normal), "hot_reload_new_button")
+        XCTAssertEqual(reusedLabel.text, "Reused cell")
+    }
+}
+#endif
