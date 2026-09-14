@@ -8,21 +8,19 @@
 import Foundation
 
 extension CrowdinSDKConfig {
-    private static var hotReloadEnabled: Bool = false
     
-    /// Debug mode status
+    /// Whether to refresh controls in application windows when the language changes.
     var hotReloadEnabled: Bool {
         get {
-            return CrowdinSDKConfig.hotReloadEnabled
+            return CrowdinSDK.isHotReloadEnabled
         }
         set {
-            CrowdinSDKConfig.hotReloadEnabled = newValue
             CrowdinSDK.enableHotReload(enable: newValue)
         }
     }
     
-    /// Method for enabling/disabling debug mode through the config.
-    /// - Parameter debugEnabled: A boolean value which indicate debug mode enabling status.
+    /// Configure refresh on language changes without swizzling control setters.
+    /// - Parameter hotReloadEnabled: Whether to automatically refresh existing controls.
     @discardableResult
     public func with(hotReloadEnabled: Bool) -> Self {
         self.hotReloadEnabled = hotReloadEnabled
