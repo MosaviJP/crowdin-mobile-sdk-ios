@@ -6,16 +6,12 @@
 //
 
 import Foundation
-#if SWIFT_PACKAGE
 #if os(iOS) || os(tvOS)
 import UIKit
 #elseif os(macOS)
 import AppKit
 #elseif os(watchOS)
 import WatchKit
-#endif
-#else
-import CrowdinSDK
 #endif
 
 var controls = NSHashTable<AnyObject>.weakObjects()
